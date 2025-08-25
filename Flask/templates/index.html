@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Productivity Insights Engine</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #818cf8; --secondary-color: #c084fc;
+            --background-start: #1e1b4b; --background-end: #1e293b;
+            --card-background: rgba(30, 41, 59, 0.5); --text-color: #e2e8f0;
+            --muted-text-color: #94a3b8; --border-color: rgba(148, 163, 184, 0.2);
+            --shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5); --gauge-value: 0;
+            --success-color: #22c55e; --warning-color: #f97316; --info-color: #3b82f6;
+        }
+        *, *::before, *::after { box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background-start);
+            background: linear-gradient(135deg, var(--background-start) 0%, var(--background-end) 100%);
+            color: var(--text-color); display: flex;
+            justify-content: center; align-items: center;
+            min-height: 100vh; margin: 0; padding: 20px; overflow: hidden;
+        }
+        body::before {
+            content: ''; position: absolute; width: 600px; height: 600px;
+            top: -10%; left: -10%;
+            background: radial-gradient(circle, rgba(129, 140, 248, 0.1) 0%, transparent 70%);
+            animation: move-bg 15s infinite alternate ease-in-out; z-index: 0;
+        }
+        body::after {
+            content: ''; position: absolute; width: 500px; height: 500px;
+            bottom: -15%; right: -15%;
+            background: radial-gradient(circle, rgba(192, 132, 252, 0.1) 0%, transparent 70%);
+            animation: move-bg-2 18s infinite alternate ease-in-out; z-index: 0;
+        }
+        @keyframes move-bg { from { transform: translate(0, 0) rotate(0deg); } to { transform: translate(100px, 100px) rotate(45deg); } }
+        @keyframes move-bg-2 { from { transform: translate(0, 0) rotate(0deg); } to { transform: translate(-100px, -100px) rotate(-45deg); } }
+
+        .main-container {
+            position: relative; z-index: 1; width: 100%;
+            max-width: 1200px; background: var(--card-background);
+            border: 1px solid var(--border-color);
+            backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
+            border-radius: 24px; box-shadow: var(--shadow);
+            padding: 20px; display: flex; flex-direction: column;
+        }
+        header { padding: 20px 30px; border-bottom: 1px solid var(--border-color); }
+        header h1 { font-size: 28px; font-weight: 700; margin: 0; color: #fff; }
+        header p { font-size: 15px; color: var(--muted-text-color); margin: 5px 0 0 0; max-width: 600px; }
+        .dashboard-content { display: flex; gap: 20px; padding: 30px; }
+        .input-section, .results-section { flex: 1; }
+        .input-form-wrapper { max-height: 60vh; overflow-y: auto; padding-right: 15px; }
+        .input-form-wrapper::-webkit-scrollbar { width: 6px; }
+        .input-form-wrapper::-webkit-scrollbar-track { background: transparent; }
+        .input-form-wrapper::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 3px; }
+        h2 { font-size: 22px; margin-top: 0; color: #fff; display: flex; align-items: center; gap: 10px; }
+        .form-group { margin-bottom: 16px; text-align: left; position: relative; }
+        .form-group label { display: inline-flex; align-items: center; font-size: 14px; font-weight: 500; margin-bottom: 8px; color: var(--muted-text-color); }
+        .info-icon { margin-left: 8px; cursor: pointer; display: inline-block; width: 16px; height: 16px; }
+        .info-icon svg { fill: var(--muted-text-color); transition: fill 0.2s; }
+        .info-icon:hover svg { fill: var(--primary-color); }
+        .tooltip-dynamic {
+            position: fixed; z-index: 1000;
+            background-color: #1f2937; color: #fff;
+            text-align: center; border-radius: 6px;
+            padding: 10px; width: 220px;
+            font-size: 12px; line-height: 1.5;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+            opacity: 0; transition: opacity 0.2s ease-in-out;
+            pointer-events: none;
+        }
+        input, select {
+            width: 100%; padding: 12px;
+            background-color: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+            color: var(--text-color); border-radius: 8px;
+            font-size: 14px; box-sizing: border-box; transition: all 0.2s;
+        }
+        input:focus, select:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.4); }
+        select option { background: #374151; color: white; }
+        button {
+            width: 100%; padding: 14px;
+            background-image: linear-gradient(to right, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white; border: none; border-radius: 8px;
+            font-size: 16px; font-weight: 600; cursor: pointer;
+            margin-top: 10px; transition: all 0.2s;
+            display: flex; justify-content: center; align-items: center;
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 7px 20px -5px rgba(99, 102, 241, 0.4); }
+        .spinner { border: 3px solid rgba(255,255,255,0.3); border-top: 3px solid #fff; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: none; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .results-section { display: flex; flex-direction: column; justify-content: center; align-items: center; opacity: 0; transform: translateY(20px); transition: opacity 0.6s 0.2s ease-out, transform 0.6s 0.2s ease-out; }
+        .results-section.visible { opacity: 1; transform: translateY(0); }
+        .gauge-container { position: relative; width: 220px; height: 220px; margin-bottom: 20px; }
+        .gauge-bg, .gauge-fill { width: 100%; height: 100%; border-radius: 50%; position: absolute; }
+        .gauge-bg { background-color: rgba(0, 0, 0, 0.2); }
+        .gauge-fill { background: conic-gradient(var(--info-color) calc(var(--value) * 1%), var(--secondary-color) calc(var(--value) * 1%)); transition: all 1s ease-out; filter: drop-shadow(0 0 10px var(--primary-color)); }
+        .gauge-cover { position: absolute; top: 15px; left: 15px; width: 190px; height: 190px; background: var(--background-end); border-radius: 50%; display: flex; justify-content: center; align-items: center; flex-direction: column; }
+        #result-score { font-size: 52px; font-weight: 700; color: #fff; }
+        #result-category { font-size: 16px; font-weight: 500; padding: 4px 12px; border-radius: 999px; margin-top: -5px; }
+        .category-blue { background-color: var(--info-color); color: #fff; }
+        .category-green { background-color: var(--success-color); color: #fff; }
+        .category-orange { background-color: var(--warning-color); color: #fff; }
+        #result-recommendation { font-size: 15px; line-height: 1.7; color: var(--muted-text-color); text-align: left; margin-top: 20px; white-space: pre-wrap; }
+        #recommendation-title { font-weight: 600; color: var(--text-color); margin-bottom: 8px; }
+        @media (max-width: 900px) { .dashboard-content { flex-direction: column; } .input-form-wrapper { max-height: none; overflow-y: visible; } }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <header>
+            <h1>Productivity Insights Engine 🚀</h1>
+            <p>Leverage machine learning to predict employee productivity. This tool provides data-driven insights to help managers optimize work and support their teams effectively.</p>
+        </header>
+        <div class="dashboard-content">
+            <div class="input-section">
+                <h2>📊 Input Parameters</h2>
+                <div class="input-form-wrapper">
+                    <form id="prediction-form">
+                        <fieldset>
+                            <div class="form-group">
+                                <label for="targeted_productivity">Targeted Productivity
+                                    <span class="info-icon" data-tooltip="The department's productivity target for this task (e.g., 0.80 for 80%).">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg>
+                                    </span>
+                                </label>
+                                <input type="number" step="any" id="targeted_productivity" name="targeted_productivity" value="0.8" required />
+                            </div>
+                            <div class="form-group">
+                                <label for="smv">SMV (Standard Minute Value)<span class="info-icon" data-tooltip="Allocated time for this task in minutes. A higher value indicates a more complex task."><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg></span></label>
+                                <input type="number" step="any" id="smv" name="smv" value="20" required />
+                            </div>
+                            <div class="form-group">
+                                <label for="wip">WIP (Work in Progress)<span class="info-icon" data-tooltip="Number of unfinished items for the team. Enter 0 if none."><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg></span></label>
+                                <input type="number" step="any" min="0" id="wip" name="wip" value="700" required />
+                            </div>
+                            <div class="form-group">
+                                <label for="no_of_style_change">No. of Style Changes<span class="info-icon" data-tooltip="Number of style changes during the task."><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg></span></label>
+                                <input type="number" step="any" min="0" id="no_of_style_change" name="no_of_style_change" value="0" required />
+                            </div>
+                            <div class="form-group">
+                                <label for="no_of_workers">Number of Workers<span class="info-icon" data-tooltip="Total number of workers assigned to this task."><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg></span></label>
+                                <input type="number" step="any" min="0" id="no_of_workers" name="no_of_workers" value="50" required />
+                            </div>
+                            <div class="form-group">
+                                <label for="team">Team Number<span class="info-icon" data-tooltip="The assigned team number (e.g., 1 to 12)."><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg></span></label>
+                                <input type="number" step="any" id="team" name="team" value="5" required />
+                            </div>
+                            <div class="form-group">
+                                <label for="over_time">Over Time (mins)<span class="info-icon" data-tooltip="Amount of overtime in minutes for the team."><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg></span></label>
+                                <input type="number" step="any" min="0" id="over_time" name="over_time" value="900" required />
+                            </div>
+                            <div class="form-group">
+                                <label for="incentive">Incentive<span class="info-icon" data-tooltip="Financial incentive for the task, if any (e.g., 50). Enter 0 for none."><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg></span></label>
+                                <input type="number" step="any" min="0" id="incentive" name="incentive" value="50" required />
+                            </div>
+                            <div class="form-group">
+                                <label for="idle_time">Idle Time (mins)<span class="info-icon" data-tooltip="Amount of time production was interrupted."><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg></span></label>
+                                <input type="number" step="any" min="0" id="idle_time" name="idle_time" value="0" required />
+                            </div>
+                            <div class="form-group">
+                                <label for="idle_men">Idle Men<span class="info-icon" data-tooltip="Number of workers who were idle during interruption."><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg></span></label>
+                                <input type="number" step="any" min="0" id="idle_men" name="idle_men" value="0" required />
+                            </div>
+                        </fieldset>
+                        <fieldset>
+                            <div class="form-group">
+                                <label for="quarter">Quarter<span class="info-icon" data-tooltip="The business quarter for the task."><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg></span></label>
+                                <select id="quarter" name="quarter" required><option value="Quarter1">Quarter 1</option><option value="Quarter2">Quarter 2</option><option value="Quarter3">Quarter 3</option><option value="Quarter4" selected>Quarter 4</option><option value="Quarter5">Quarter 5</option></select>
+                            </div>
+                            <div class="form-group">
+                                <label for="department">Department<span class="info-icon" data-tooltip="The department assigned to the task."><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg></span></label>
+                                <select id="department" name="department" required><option value="sweing">Sweing</option><option value="finishing" selected>Finishing</option></select>
+                            </div>
+                            <div class="form-group">
+                                <label for="day">Day of the Week<span class="info-icon" data-tooltip="The day the task is scheduled."><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg></span></label>
+                                <select id="day" name="day" required><option value="Monday" selected>Monday</option><option value="Tuesday">Tuesday</option><option value="Wednesday">Wednesday</option><option value="Thursday">Thursday</option><option value="Saturday">Saturday</option><option value="Sunday">Sunday</option></select>
+                            </div>
+                        </fieldset>
+                        <button type="submit" id="predict-button"><span id="button-text">Analyze & Predict</span><div class="spinner" id="spinner"></div></button>
+                    </form>
+                </div>
+            </div>
+            <div class="results-section" id="results-section">
+                <h2>💡 Prediction Insights</h2>
+                <div class="gauge-container">
+                    <div class="gauge-bg"></div><div class="gauge-fill" id="gauge-fill"></div>
+                    <div class="gauge-cover">
+                        <div id="result-score">0.00</div>
+                        <div id="result-category" class="">Category</div>
+                    </div>
+                </div>
+                <div id="result-recommendation">
+                    <div id="recommendation-title">Recommended Actions:</div>
+                    <div id="recommendation-text">Enter parameters on the left and click predict to see data-driven insights here.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('prediction-form');
+            const resultsSection = document.getElementById('results-section');
+            const button = document.getElementById('predict-button');
+            const buttonText = document.getElementById('button-text');
+            const spinner = document.getElementById('spinner');
+            const resultScoreEl = document.getElementById('result-score');
+            const categoryEl = document.getElementById('result-category');
+            const recommendationTextEl = document.getElementById('recommendation-text');
+            const gaugeFillEl = document.getElementById('gauge-fill');
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                buttonText.style.display = 'none';
+                spinner.style.display = 'block';
+                button.disabled = true;
+
+                try {
+                    const response = await fetch('/predict', { method: 'POST', body: new FormData(form) });
+                    const result = await response.json();
+
+                    if (!response.ok || result.error) {
+                        throw new Error(result.error || 'Server responded with an error.');
+                    }
+                    
+                    resultScoreEl.textContent = result.score;
+                    categoryEl.textContent = result.category;
+                    categoryEl.className = `category-${result.color}`;
+                    recommendationTextEl.textContent = result.recommendation;
+                    
+                    const scoreValue = parseFloat(result.score) * 100;
+                    gaugeFillEl.style.setProperty('--value', scoreValue);
+                    
+                    resultsSection.classList.add('visible');
+
+                } catch (error) {
+                    console.error('Prediction Error:', error);
+                    resultScoreEl.textContent = "Error";
+                    categoryEl.textContent = "";
+                    recommendationTextEl.textContent = 'An error occurred while fetching the prediction. Please ensure the backend server is running correctly and check the browser console for more details.';
+                    resultsSection.classList.add('visible');
+                } finally {
+                    buttonText.style.display = 'inline';
+                    spinner.style.display = 'none';
+                    button.disabled = false;
+                }
+            });
+
+            // Tooltip JavaScript Fix
+            const infoIcons = document.querySelectorAll('.info-icon');
+            let tooltipElement = null;
+
+            infoIcons.forEach(icon => {
+                const tooltipText = icon.getAttribute('data-tooltip');
+                
+                icon.addEventListener('mouseover', (e) => {
+                    tooltipElement = document.createElement('div');
+                    tooltipElement.className = 'tooltip-dynamic';
+                    tooltipElement.textContent = tooltipText;
+                    document.body.appendChild(tooltipElement);
+
+                    const iconRect = e.target.getBoundingClientRect();
+                    tooltipElement.style.left = `${iconRect.left + (iconRect.width / 2) - (tooltipElement.offsetWidth / 2)}px`;
+                    tooltipElement.style.top = `${iconRect.top - tooltipElement.offsetHeight - 8}px`;
+                    tooltipElement.style.opacity = '1';
+                });
+
+                icon.addEventListener('mouseout', () => {
+                    if (tooltipElement) {
+                        tooltipElement.remove();
+                        tooltipElement = null;
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
